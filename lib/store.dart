@@ -75,10 +75,12 @@ class Store {
     });
   }
 
+  int unreadCount = 0;
+
   Future<void> getRoomList() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.11.2:8888/chatrooms'),
+        Uri.parse('http://192.168.11.18:7006/chatrooms'),
         headers: {'Authorization': 'Bearer ${store.tkn}'}
       ).timeout(Duration(seconds: 5));
 
@@ -86,7 +88,7 @@ class Store {
       print(response.statusCode);
 
       if (response.statusCode == 200) {
-        final roomInfo = jsonDecode(pref.getString('roomInfo') ?? "{}");
+        final Map<String, dynamic> roomInfo = jsonDecode(pref.getString('roomInfo') ?? "{}");
         final responseData = jsonDecode(response.body);
         List list = responseData['data']['chatrooms'];
         pref.setString('roomList', jsonEncode(roomList));
@@ -99,9 +101,12 @@ class Store {
               lastMessageTime: e['lastMessageTime'],
               unreadCount: e['unreadCount'],
               participants: List<int>.from(e['participants']),
-              section: local['section'] ?? ''
+              section: local['section'] ?? '',
+              isStar: local['isStar'] ?? false
           );
         }).toList();
+
+        updateScreen();
       }
     } catch (e) {
       List list = jsonDecode(pref.getString('roomList') ?? '[]');
@@ -115,7 +120,8 @@ class Store {
             lastMessageTime: e['lastMessageTime'],
             unreadCount: e['unreadCount'],
             participants: List<int>.from(e['participants']),
-            section: local['section'] ?? ''
+            section: local['section'] ?? '',
+            isStar: local['isStar'] ?? false
         );
       }).toList();
     }
@@ -126,6 +132,7 @@ class Store {
   List<User> userList = [];
   List<Room> roomList = [];
   List<int> selectedUser = [];
+  List<UnreadChat> unreadChatList = [];
 }
 
 class User {
@@ -145,6 +152,17 @@ class Room {
   final int unreadCount;
   final List<int> participants;
   final String section;
+  final bool isStar;
 
-  Room({required this.id, required this.roomName, required this.lastMessage, required this.lastMessageTime, required this.unreadCount, required this.participants, required this.section});
+  Room({required this.id, required this.roomName, required this.lastMessage, required this.lastMessageTime, required this.unreadCount, required this.participants, required this.section, required this.isStar});
+}
+
+class UnreadChat {
+  final int roomId;
+  final String roomName;
+  final String lastMessage;
+  final int unreadCount;
+  final List<Map<String, dynamic>> participants;
+
+  UnreadChat({required this.roomId, required this.roomName, required this.lastMessage, required this.unreadCount, required this.participants});
 }

@@ -57,7 +57,7 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> signIn() async {
     final body = {'email': _emailController.text, 'password': _passwordController.text};
     final response = await http.post(
-      Uri.parse('http://192.168.11.2:8888/auth/login'),
+      Uri.parse('http://192.168.11.18:7006/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body)
     );

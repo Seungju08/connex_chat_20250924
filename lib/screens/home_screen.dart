@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:connex_chat/save_image.dart';
+import 'package:connex_chat/screens/chat_detail_screen.dart';
 import 'package:connex_chat/store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -19,7 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> getUserInfo() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.11.2:8888/users/me'),
+        Uri.parse('http://192.168.11.18:7006/users/me'),
         headers: {'Authorization': 'Bearer ${store.tkn}'},
       ).timeout(Duration(seconds: 5));
 
@@ -38,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> getUserList() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.11.2:8888/employees'),
+        Uri.parse('http://192.168.11.18:7006/employees'),
         headers: {'Authorization': 'Bearer ${store.tkn}'},
       ).timeout(Duration(seconds: 5));
 
@@ -57,11 +59,37 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
   }
 
+  late WebSocket webSocket;
+  String message = '';
+
+  Future<void> connectWebSocket() async {
+    webSocket = await WebSocket.connect('ws://192.168.11.18:7006/ws/unread?token=${store.tkn}');
+
+    webSocket.listen((event) {
+      final data = jsonDecode(event);
+      store.unreadCount = data['response']['data']['totalCount'];
+      List list = data['response']['data']['unreadChats'];
+      store.unreadChatList = list.map((e) {
+        return UnreadChat(
+            roomId: e['chatroomId'],
+            roomName: e['roomName'],
+            lastMessage: e['lastMessage'],
+            unreadCount: e['unreadCount'],
+            participants: List<Map<String, dynamic>>.from(e['participants'])
+        );
+      }).toList();
+      message = data['response']['data']['message'];
+      store.updateScreen();
+      print(data);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     getUserInfo();
     getUserList();
+    connectWebSocket();
   }
 
   @override
@@ -114,10 +142,62 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       SizedBox(height: 40),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(message, style: TextStyle(color: Colors.black, fontSize: 18, fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      SizedBox(
+                        height: 135,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: store.unreadChatList.length,
+                          itemBuilder: (context, index) {
+                            final unreadChat = store.unreadChatList[index];
+
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              child: GestureDetector(
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ChatDetailScreen(roomName: unreadChat.roomName, sectionName: store.roomList.firstWhere((element) => element.id == unreadChat.roomId).section, roomId: unreadChat.roomId))),
+                                child: Container(
+                                  width: 155,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(25),
+                                    boxShadow: [BoxShadow(color: primaryColor.withOpacity(0.3), blurRadius: 2, offset: Offset(0, 2))]
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        SizedBox(height: 35, child: Stack(
+                                          children: [
+                                            for (int i = unreadChat.participants.length - 1; i >= 0; i--)
+                                              Positioned(
+                                                left: i * 20,
+                                                child: Container(
+                                                  width: 35,
+                                                  height: 35,
+                                                  child: ClipRRect(borderRadius: BorderRadius.circular(100), child: Image.network('http://192.168.11.18:7006${unreadChat.participants[i]['profileImage']}')),
+                                                ),
+                                              )
+                                          ],
+                                        )),
+                                        SizedBox(width: 150, child: Text(unreadChat.roomName, style: TextStyle(color: primaryColor, fontSize: 16, fontFamily: 'Lexend', fontWeight: FontWeight.w600, overflow: TextOverflow.ellipsis), maxLines: 1)),
+                                        SizedBox(width: 150, child: Text(unreadChat.lastMessage, style: TextStyle(color: Colors.black.withOpacity(0.7), fontSize: 15, fontFamily: 'Lexend', fontWeight: FontWeight.w600, overflow: TextOverflow.ellipsis), maxLines: 1)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      Row(
                         children: [
                           Text('사원 목록', style: TextStyle(color: Colors.black, fontSize: 18, fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
-                          GestureDetector(onTap: () {}, child: Container(width: 25, height: 25, decoration: BoxDecoration(color: Colors.grey, borderRadius: BorderRadius.circular(5)), child: SvgPicture.asset('assets/icons/Arrange.svg', color: Colors.white)))
                         ],
                       ),
                       SizedBox(height: 5),

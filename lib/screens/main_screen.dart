@@ -41,7 +41,25 @@ class _MainScreenState extends State<MainScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _builderItem(0, 'Home', 'home-fill.svg', 'home-outline.svg'),
-                      _builderItem(1, 'Chat', 'chat-dots-fill.svg', 'chat-dots-outline.svg'),
+                      Stack(
+                        children: [
+                          _builderItem(1, 'Chat', 'chat-dots-fill.svg', 'chat-dots-outline.svg'),
+                          Positioned(
+                            left: 35,
+                            top: 5,
+                            child: Container(
+                              width: 15,
+                              height: 15,
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle
+                              ),
+                              alignment: Alignment.center,
+                              child: Text('${store.unreadCount}', style: TextStyle(color: Colors.white, fontSize: 10, fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+                            ),
+                          )
+                        ],
+                      ),
                       _builderItem(2, 'Profile', 'person-fill.svg', 'person-outline.svg'),
                     ],
                   ),
